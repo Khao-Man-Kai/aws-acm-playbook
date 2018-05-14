@@ -1,0 +1,10 @@
+#
+# Ansible Playbook: Operation management in AWS Certificate Manager
+#
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Obtain all facts for a single ACM certificate
+      aws_acm_facts:
+        name: "{{ domain_name }}"

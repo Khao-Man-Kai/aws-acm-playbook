@@ -1,0 +1,11 @@
+#
+# Ansible Playbook: Operation management in AWS Certificate Manager
+#
+---
+- hosts: localhost
+  connection: local
+  tasks:
+    - name: Obtain all certificates pending validiation
+      aws_acm_facts:
+        statuses:
+        - PENDING_VALIDATION
