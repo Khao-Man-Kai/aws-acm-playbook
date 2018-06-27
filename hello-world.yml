@@ -1,0 +1,10 @@
+#
+# Ansible Playbook: create/change/delete dns A record in AWS Route53
+#
+---
+- hosts: localhost
+  gather_facts: no
+  connection: local
+  tasks:
+  - name: Create an empty file with name myfile.txt
+    shell: touch hello.txt
