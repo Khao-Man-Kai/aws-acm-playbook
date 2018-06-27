@@ -6,5 +6,5 @@
   gather_facts: no
   connection: local
   tasks:
-  - name: Create an empty file with name myfile.txt
-    shell: touch hello.txt
+  - name: Create an empty file with name hello.txt
+    shell: touch /var/tmp/hello.txt
