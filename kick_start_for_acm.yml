@@ -1,0 +1,15 @@
+#
+# Ansible Playbook: Batch for acm automation approval
+#
+---
+- hosts: localhost
+  gather_facts: no
+  connection: local
+  tasks:
+    - name: acm automation approve by selenium
+      shell: python library/acm_auto_approve_by_selenium.py
+      register: return_from_python   # 実行結果をansible変数に格納
+      changed_when: no
+    - name: show previous shell stdout
+      debug:
+        msg: "{{ return_from_python.stdout_lines }}"  # .stdout_lines: 標準出力結果
