@@ -1,3 +1,7 @@
+# -*- coding: utf-8 -*-
+# Todo: 外部モジュールとして読み込めなかったため、selenium.pyに集約。あとで対応する。
+#
+
 import boto3
 from pytz import timezone
 from datetime import datetime
@@ -26,6 +30,3 @@ def upload_object_test():
             'ContentType': 'image/png'   # 画像をAWSが識別するために指定
         }
     )
-
-print(upload_object_test())
-
