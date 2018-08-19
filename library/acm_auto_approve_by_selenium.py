@@ -135,11 +135,13 @@ def main():
             try:
                 # 自動承認実行: [I Approve]ボタンクリック
                 print("Debug3: Click_to_approve_button")
-                driver.find_element_by_name("commit").click()
+                driver.find_element_by_name("commit")                         # Dev用コード
+#                driver.find_element_by_name("commit").click()
                 time.sleep(2)
 
                 # 承認結果を格納
-                business_data = driver.find_element_by_tag_name("h2").text
+#                business_data = driver.find_element_by_tag_name("h2").text
+                business_data = 'Success!'                                    # Dev用コード
 
                 # 承認結果判定: 承認に成功した場合はJIRAチケットを作成する
                 if business_data == 'Success!':
