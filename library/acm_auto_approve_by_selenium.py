@@ -1,28 +1,37 @@
 # -*- coding: utf-8 -*-
 
-import time
-import sys
-import urllib3
+import time, sys, os
+from pytz import timezone
+from datetime import datetime
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver import Chrome, ChromeOptions
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
+import urllib3
 from urllib3.exceptions import InsecureRequestWarning
 urllib3.disable_warnings(InsecureRequestWarning)
+from utils import upload_object_test
 
-login_url = 'https://awx.acp-automation.com:8000/'
+#login_url = 'https://awx.acp-automation.com:8000/'
+login_url = 'https://127.0.0.1:8000/'
 base_url = login_url + 'automation/mail/'
-login_user_name = 'yohei.q8hb.matsumoto@misumi.co.jp'
-login_user_passwd = 'Dkgy8526'
-#login_user_name = 'fip.zyxf.connect@misumi.co.jp'
-#login_user_passwd = 'Ham42323'
+#login_user_name = 'yohei.q8hb.matsumoto@misumi.co.jp'
+#login_user_passwd = 'Dkgy8526'
+login_user_name = 'fip.zyxf.connect@misumi.co.jp'
+login_user_passwd = 'Ham42323'
+
+# 作業証跡用スクリーンショット名
+work_log_img = datetime.now(timezone('Asia/Tokyo')).strftime("%H_") \
+               + 'hourly_acm_approval_mail_list.png'
 
 
+"""
+ACM自動承認処理メイン
+"""
 def main():
     options = Options()
     # ヘッドレスモードを有効にする（次の行をコメントアウトすると画面が表示される）。
-    options.add_argument('--headless')
+#    options.add_argument('--headless')
     options.add_argument('--no-sandbox')
     # ChromeのWebDriverオブジェクトを作成する。
     driver = webdriver.Chrome(chrome_options=options)
@@ -74,18 +83,18 @@ def main():
         for i, atag in enumerate(approvals_list, 1):
             time.sleep(7)   # JIRAチケット作成を加味したスリープ（概ね作成時間は5秒::Ajaxのタイムアウトは8秒に設定）
             # Controlを押しながらリンクをクリック
-            ActionChains(driver)\
-                .key_down(Keys.CONTROL)\
-                .click(approvals_stack.pop())\
-                .key_up(Keys.CONTROL)\
-                .perform()
+#            ActionChains(driver)\
+#                .key_down(Keys.CONTROL)\
+#                .click(approvals_stack.pop())\
+#                .key_up(Keys.CONTROL)\
+#                .perform()
 
             # Control（MacはCOMMAND）を押しながらリンクをクリック
-#            ActionChains(driver) \
-#                .key_down(Keys.CONTROL) \
-#                .click(approvals_stack.pop()) \
-#                .key_up(Keys.CONTROL) \
-#                .perform()
+            ActionChains(driver) \
+                .key_down(Keys.COMMAND) \
+                .click(approvals_stack.pop()) \
+                .key_up(Keys.COMMAND) \
+                .perform()
 
             # AWS承認ページの新タブに移動
             print("Debug0: [i]: {}".format(i))
@@ -124,16 +133,28 @@ def main():
                 account_data_stack.pop()
             else:
                 print("ACM承認成功")
-                print("JIRAチケット作成完了\n")
+                print("JIRAチケット作成完了")
 
             # ACM承認依頼メールリストのメインタブに戻る
             driver.switch_to.window(driver.window_handles[0])
 
-        # 終了
         time.sleep(3)
-        driver.save_screenshot("Hourly_acm_approval_mail_list.png")
+        # 作業証跡としてACM UIのスクリーンショットを取得
+        driver.save_screenshot(work_log_img)
+        print("Debug4: Save_screenshot")
+        # 作業証跡および、メール添付用としてS3へUpload
+        upload_object_test()
+        print("Debug5: Upload_a_screenshot_to_S3")
+        # 不要ファイル削除
+#        os.remove(work_log_img)
+        # 作業証跡メール送付
+        driver.find_element_by_class_name("sendmail").click()
+        time.sleep(5)
+        # Exit
+        print("Debug6: Successful!\n")
         driver.quit()
 
 
 if __name__ == '__main__':
     main()
+
