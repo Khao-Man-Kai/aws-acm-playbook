@@ -62,7 +62,7 @@ def main():
     # ChromeのWebDriverオブジェクトを作成する。
     driver = webdriver.Chrome(chrome_options=options)
     # ウィンドウサイズを調整
-    driver.set_window_size(840,1680)
+    driver.set_window_size(840,1280)
 
     try:
         print('Debug1: O365ログイン画面への遷移')
