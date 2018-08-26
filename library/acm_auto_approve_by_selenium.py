@@ -17,20 +17,18 @@ from datetime import datetime
 # 自動化ツール用S3バケット、ベースディレクトリ指定
 s3 = boto3.resource('s3')
 bucket = s3.Bucket('misumi-automationtool')
-base_dir = 'worklog/'
+base_dir = 'worklog/'              # Prod
+#base_dir = 'worklog/test/'         # Dev
 
 # 作業証跡用スクリーンショット名
-work_log_img = 'hourly_acm_approval_mail_list.png'
+work_log_name = 'hourly_acm_approval_mail_list.png'
 target_time = "{0}".format((datetime.now(timezone('Asia/Tokyo')).strftime("%Y/%m/%d/")))
 upload_filepass = base_dir + target_time + \
-                  datetime.now(timezone('Asia/Tokyo')).strftime("%H_").replace(':','_') + \
-                  work_log_img
+                  datetime.now(timezone('Asia/Tokyo')).strftime("%H_").replace(':','_') + work_log_name
 
 login_url = 'https://awx.acp-automation.com:8000/'
 #login_url = 'https://127.0.0.1:8000/'     # headlessモードの場合、仕様上ローカルでの実行は失敗する
 base_url = login_url + 'automation/mail/'
-#login_user_name = 'yohei.q8hb.matsumoto@misumi.co.jp'
-#login_user_passwd = 'Dkgy8526'
 login_user_name = 'fip.zyxf.connect@misumi.co.jp'
 login_user_passwd = 'Ham42323'
 
@@ -56,26 +54,33 @@ def upload_object():
 ACM自動承認処理メイン
 """
 def main():
-    print("Job start ====================================================================>")
+    print("Job start ===============================================================>")
     options = Options()
     # ヘッドレスモードを有効にする（次の行をコメントアウトすると画面が表示される）。
-    options.add_argument('--headless')
+    options.add_argument('--headless')                                             # Prod
     options.add_argument('--no-sandbox')   # root以外でも実行可能にする
     # ChromeのWebDriverオブジェクトを作成する。
     driver = webdriver.Chrome(chrome_options=options)
     # ウィンドウサイズを調整
-    driver.set_window_size(1024,1680)
+    driver.set_window_size(840,1680)
 
     try:
+        print('Debug1: O365ログイン画面への遷移')
         driver.get(login_url)
         time.sleep(5)
         driver.find_element_by_id('connect-button').click()
     except:
-        print('Debug0: O365ログイン画面への遷移に失敗しました。処理を終了します。')
-        driver.save_screenshot("login.png")
-        sys.exit(-1)
+        print(' Failed: O365ログイン画面への遷移に失敗しました。10秒後にリトライします。')
+        try:
+            time.sleep(10)
+            driver.find_element_by_id('connect-button').click()
+        except:
+            print(' Failed: O365ログイン画面への遷移に失敗しました。終了します。')
+            sys.exit(-1)
+        else:
+            print(' Success: O365ログイン画面への遷移にリトライして成功しました。')
     else:
-        print('Debug0: O365ログイン画面への遷移に成功しました。')
+        print(' Success: O365ログイン画面への遷移に成功しました。')
 
     # O365ログイン画面でログインユーザ名を自動入力
     user_name = driver.find_element_by_id('i0116')
@@ -85,6 +90,7 @@ def main():
     user_passwd.send_keys(login_user_passwd)
 
     try:
+        print('Debug2: O365ログイン処理')
         # メールアドレスを入力しクリック
         driver.find_element_by_id('i0116').send_keys(Keys.RETURN)
         time.sleep(3)
@@ -94,19 +100,26 @@ def main():
         # サインイン状態を保持しない、チェックボックスをオンにしページ遷移
         driver.find_element_by_id('idBtn_Back').send_keys(Keys.RETURN)
         # 読み込んだページHTMLを取得
-        data = driver.page_source.encode('utf-8')
+        driver.page_source.encode('utf-8')
     except:
-        print('Debug1: [' + login_url + '] へのログインに失敗しました。処理を終了します。')
-        sys.exit(-1)
+        print(' Failed: [' + login_url + '] へのログインに失敗しました。10秒後にリトライします。')
+        try:
+            time.sleep(10)
+            driver.page_source.encode('utf-8')
+        except:
+            print(' Failed: [' + login_url + '] へのログインに失敗しました。終了します。')
+            sys.exit(-1)
+        else:
+            print(' Success: [' + login_url + '] へのログインにリトライして成功しました。\n')
     else:
-        print('Debug1: [' + login_url + '] へのログインに成功しました。')
+        print(' Success: [' + login_url + '] へのログインに成功しました。\n')
 
         # 承認リンク取得
         approvals_list  = driver.find_elements_by_link_text("Approve")   # Loop処理用
         approvals_stack = driver.find_elements_by_link_text("Approve")   # クリック処理用
         # JIRA作成ボタン取得
-        btn_stack = driver.find_elements_by_class_name("jira")
-        # 業務情報取得
+        jira_btn_stack = driver.find_elements_by_class_name("jira")
+        # 業務データ取得
         account_data_stack = driver.find_elements_by_class_name("account_data")
         # 自動承認処理
         for i, atag in enumerate(approvals_list, 1):
@@ -126,32 +139,37 @@ def main():
 #                .perform()
 
             # AWS承認ページの新タブに移動
-            print("Debug2: [i]: {}".format(i))
-            print("Debug2: driver.window_handles[i]: {}".format(driver.window_handles[i]))
+            print("Debug3: [i]: {}".format(i))
+            print("Debug3: driver.window_handles[i]: {}".format(driver.window_handles[i]))
             driver.save_screenshot("Debug0.png")
             driver.switch_to.window(driver.window_handles[i])
             time.sleep(5)
 
             try:
                 # 自動承認実行: [I Approve]ボタンクリック
-                print("Debug3: Click_to_approve_button")
-                driver.find_element_by_name("commit")                         # Dev用コード
-#                driver.find_element_by_name("commit").click()
+                print("Debug4: Click_to_approve_button")
+#                driver.find_element_by_name("commit").click()                # Prodコード
+                driver.find_element_by_name("commit")                         # Devコード
                 time.sleep(2)
 
                 # 承認結果を格納
-#                business_data = driver.find_element_by_tag_name("h2").text
-                business_data = 'Success!'                                    # Dev用コード
+#                result = driver.find_element_by_tag_name("h2").text          # Prodコード
+                result = 'Success!'                                           # Devコード
 
                 # 承認結果判定: 承認に成功した場合はJIRAチケットを作成する
-                if business_data == 'Success!':
+                if result == 'Success!':
+                    print(" Success: ACM承認成功")
                     # ACM承認依頼メールリストのメインタブに戻る
                     driver.switch_to.window(driver.window_handles[0])
                     time.sleep(2)
-                    print("Debug4: Business_data")
-#                    print(account_data_stack.pop().get_attribute("value"))
-                    print("Debug5: Click_to_jira_button")
-                    btn_stack.pop().click()
+                    try:
+                        print("Debug5: Click_to_jira_button")
+                        jira_btn_stack.pop().click()
+                    except:
+                        print(" Failed: JIRAチケット作成エラー")
+                    else:
+                        print(" Success: JIRAチケット作成完了＋業務データ保存完了")
+                    time.sleep(3)
                 else:
                     print(" Failed: 不明なエラー")
             except:
@@ -159,11 +177,10 @@ def main():
                 print(' 承認リンクのタイムアウト or 承認クリックが正常に処理されなかったため')
                 print(' 承認処理/JIRAチケット作成をスキップします。')
                 # 承認処理できないためJIRA作成はスキップ
-                btn_stack.pop()
+                jira_btn_stack.pop()
                 account_data_stack.pop()
             else:
-                print("ACM承認成功")
-                print("JIRAチケット作成完了")
+                print("メインタブ[0]に戻る\n")
 
             # ACM承認依頼メールリストのメインタブに戻る
             driver.switch_to.window(driver.window_handles[0])
@@ -172,19 +189,22 @@ def main():
         # 作業証跡としてACM UIのスクリーンショットを取得
         print("Debug6: Save_screenshot")
         driver.save_screenshot(work_log_img)
+
         # 作業証跡および、メール添付用としてS3へUpload
         print("Debug7: Upload_a_screenshot_to_S3")
         upload_object()
+
         # 不要ファイル削除
         os.remove(work_log_img)
+
         # 作業証跡メール送付
         print("Debug8: Send_job_completion_notification_e-mail")
         driver.find_element_by_class_name("sendmail").click()
         time.sleep(5)
-        # Exit
-        print("Job finished =================================================================>")
-        driver.quit()
 
+        # Exit
+        print("Job finished ============================================================>")
+        driver.quit()
 
 if __name__ == '__main__':
     main()
