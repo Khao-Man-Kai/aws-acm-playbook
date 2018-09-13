@@ -26,7 +26,7 @@ target_time = "{0}".format((datetime.now(timezone('Asia/Tokyo')).strftime("%Y/%m
 upload_filepass = base_dir + target_time + \
                   datetime.now(timezone('Asia/Tokyo')).strftime("%H_").replace(':','_') + work_log_name
 
-login_url = 'https://awx.acp-automation.com:8000/'
+login_url = 'https://automation.internal.misumi.jp:8000/'
 #login_url = 'https://127.0.0.1:8000/'     # headlessモードの場合、仕様上ローカルでの実行は失敗する
 base_url = login_url + 'automation/mail/'
 login_user_name = 'fip.zyxf.connect@misumi.co.jp'
